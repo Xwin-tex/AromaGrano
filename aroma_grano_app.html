@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aroma & Grano</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <!-- PROCESSING OVERLAY -->
+  <div id="pay-processing">
+    <div class="spin"></div>
+    <div class="proc-title">Procesando pago</div>
+    <div class="proc-sub" id="proc-method-lbl">Verificando datos…</div>
+    <div class="proc-steps">
+      <div class="proc-step" id="ps1"><div class="proc-step-dot"></div>Iniciando conexión segura</div>
+      <div class="proc-step" id="ps2"><div class="proc-step-dot"></div>Verificando fondos</div>
+      <div class="proc-step" id="ps3"><div class="proc-step-dot"></div>Autorizando transacción</div>
+      <div class="proc-step" id="ps4"><div class="proc-step-dot"></div>Confirmando pedido</div>
+    </div>
+  </div>
+
+  <!-- SPLASH -->
+  <div id="s-splash" class="screen active">
+    <div class="bean"></div>
+    <div class="splash-title">Aroma & Grano</div>
+    <div class="splash-sub">Café de Especialidad</div>
+    <div id="splash-loading" style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px">
+      <div style="width:28px;height:28px;border:3px solid rgba(212,160,106,.2);border-top-color:var(--caramel);border-radius:50%;animation:spin .8s linear infinite"></div>
+      <div style="color:var(--latte);font-size:12px;letter-spacing:1px">Cargando datos…</div>
+    </div>
+    <button class="btn-main" id="splash-btn" onclick="go('login')" style="display:none">Ingresar</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="s-login" class="screen">
+    <div class="login-logo">
+      <div class="bean"></div>
+      <div class="logo-title">Aroma & Grano</div>
+      <div class="logo-sub">Café de Especialidad</div>
+    </div>
+    <div class="card">
+      <div class="auth-tabs">
+        <button class="atab on" onclick="atab('login',this)">Iniciar sesión</button>
+        <button class="atab" onclick="atab('reg',this)">Registrarse</button>
+      </div>
+      <div id="pnl-login" class="pnl on">
+        <div class="fg"><label class="fl">Correo</label><input class="fi" id="li-email" type="email" placeholder="tu@correo.com"></div>
+        <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="li-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="ferr" id="li-err"></div>
+        <button class="btn-login" onclick="doLogin()">Entrar</button>
+      </div>
+      <div id="pnl-reg" class="pnl">
+        <div class="fg"><label class="fl">Nombre completo</label><input class="fi" id="rg-name" type="text" placeholder="Tu nombre"></div>
+        <div class="fg"><label class="fl">Correo</label><input class="fi" id="rg-email" type="email" placeholder="tu@correo.com"></div>
+        <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="rg-pass" type="password" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')doReg()"></div>
+        <div class="ferr" id="rg-err"></div>
+        <button class="btn-login" onclick="doReg()">Crear cuenta</button>
+      </div>
+    </div>
+    <div class="hint">
+      <strong style="color:rgba(212,160,106,.7)">Cuentas de prueba:</strong><br>
+      admin@grano.co / admin123<br>
+      sofia@grano.co / 123456
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="s-home" class="screen">
+    <div class="home-hdr">
+      <div class="hdr-greeting">Bienvenido de vuelta</div>
+      <div class="hdr-name" id="h-name">—</div>
+      <div class="pts-badge"><span>Puntos:</span><strong id="h-pts">0 pts</strong></div>
+    </div>
+    <div class="promo" style="margin-top:12px">
+      <div class="promo-txt"><strong>Hoy: Etiopía Yirgacheffe</strong>Notas de durazno y jazmín</div>
+      <div style="font-size:32px">🌿</div>
+    </div>
+    <div style="padding:12px 20px 4px;font-family:'Playfair Display',serif;font-size:18px;color:var(--espresso)">Menú</div>
+    <div class="cats" id="cats">
+      <div class="chip on" onclick="filterCat(this,'all')">Todo</div>
+      <div class="chip" onclick="filterCat(this,'espresso')">Espressos</div>
+      <div class="chip" onclick="filterCat(this,'cold')">Cold Brew</div>
+      <div class="chip" onclick="filterCat(this,'filter')">Filtrado</div>
+      <div class="chip" onclick="filterCat(this,'food')">Repostería <span class="badge-new">NEW</span></div>
+    </div>
+    <div class="mgrid" id="mgrid"></div>
+    <nav class="nav">
+      <button class="ni on" onclick="go('home')"><span class="ni-icon">☕</span><span class="ni-lbl">Menú</span></button>
+      <button class="ni" onclick="go('cart')" style="position:relative"><span class="ni-icon">🧺</span><span class="ni-lbl">Carrito</span><span class="cb" id="cb1">0</span></button>
+      <button class="ni" onclick="go('tracking')" style="position:relative"><span class="ni-icon">📋</span><span class="ni-lbl">Pedidos</span><span class="track-pulse" id="tp1">0</span></button>
+      <button class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-lbl">Perfil</span></button>
+      <button class="ni" onclick="logout()"><span class="ni-icon">🚪</span><span class="ni-lbl">Salir</span></button>
+    </nav>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="s-detail" class="screen">
+    <div class="det-hero" id="det-hero">
+      <button class="back-btn" onclick="go('home')">←</button>
+      <span id="det-em">☕</span>
+    </div>
+    <div class="det-body">
+      <div class="det-name" id="det-name"></div>
+      <div class="det-origin" id="det-orig"></div>
+      <div class="taste-chips" id="det-notes"></div>
+      <div class="det-desc" id="det-desc"></div>
+      <div class="opt-lbl">Tamaño</div>
+      <div class="opt-row" id="opt-size">
+        <div class="oc on" onclick="selOpt(this,'size')">Pequeño</div>
+        <div class="oc" onclick="selOpt(this,'size')">Mediano +$1.500</div>
+        <div class="oc" onclick="selOpt(this,'size')">Grande +$2.500</div>
+      </div>
+      <div class="opt-lbl">Leche</div>
+      <div class="opt-row" id="opt-milk">
+        <div class="oc on" onclick="selOpt(this,'milk')">Entera</div>
+        <div class="oc" onclick="selOpt(this,'milk')">Avena</div>
+        <div class="oc" onclick="selOpt(this,'milk')">Almendra</div>
+        <div class="oc" onclick="selOpt(this,'milk')">Sin leche</div>
+      </div>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="chgQty(-1)">−</button>
+        <span class="qty-n" id="qty-n">1</span>
+        <button class="qty-btn" onclick="chgQty(1)">+</button>
+      </div>
+      <div class="upsell" id="upsell" onclick="addUpsell()">
+        <span style="font-size:24px">🥐</span>
+        <div class="upsell-txt"><strong>¿Lo maridamos?</strong><br>Croissant de almendra · <strong>+$4.500</strong></div>
+        <span style="font-size:18px;color:var(--caramel)">+</span>
+      </div>
+    </div>
+    <div class="ck-bar" onclick="addCart()">
+      <span>Agregar al carrito</span>
+      <span id="det-price">$0</span>
+    </div>
+  </div>
+
+  <!-- CART -->
+  <div id="s-cart" class="screen">
+    <div class="cart-hdr">
+      <button style="background:none;border:none;color:var(--latte);font-size:13px;cursor:pointer;padding:0 0 8px" onclick="go('home')">← Seguir ordenando</button>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div class="cart-title">Tu pedido</div>
+        <button class="vaciar-btn" onclick="clearCart()" id="vaciar-btn" style="display:none">🗑 Vaciar</button>
+      </div>
+    </div>
+    <div class="cart-items" id="cart-list"></div>
+    <div class="cart-sum" id="cart-sum"></div>
+    <div class="pickup"><span style="font-size:20px">🟢</span><span><strong>Tiempo estimado:</strong> 8 min · Sucursal Centro</span></div>
+    <div class="ck-bar" onclick="goToPayment()">
+      <span>Confirmar y pagar</span>
+      <span id="cart-total">$0</span>
+    </div>
+    <nav class="nav">
+      <button class="ni" onclick="go('home')"><span class="ni-icon">☕</span><span class="ni-lbl">Menú</span></button>
+      <button class="ni on" onclick="go('cart')" style="position:relative"><span class="ni-icon">🧺</span><span class="ni-lbl">Carrito</span><span class="cb" id="cb2">0</span></button>
+      <button class="ni" onclick="go('tracking')" style="position:relative"><span class="ni-icon">📋</span><span class="ni-lbl">Pedidos</span><span class="track-pulse" id="tp2">0</span></button>
+      <button class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-lbl">Perfil</span></button>
+      <button class="ni" onclick="logout()"><span class="ni-icon">🚪</span><span class="ni-lbl">Salir</span></button>
+    </nav>
+  </div>
+
+  <!-- PAYMENT -->
+  <div id="s-payment" class="screen">
+    <div class="pay-hdr">
+      <button class="pay-back" onclick="go('cart')">←</button>
+      <div class="pay-hdr-title">Método de pago</div>
+    </div>
+    <div class="pay-body">
+      <!-- Resumen del pedido -->
+      <div class="pay-summary">
+        <div class="pay-sum-title">Resumen del pedido</div>
+        <div id="pay-items-list"></div>
+        <div class="pay-sum-total">
+          <span>Total a pagar</span>
+          <span id="pay-total-amt">$0</span>
+        </div>
+      </div>
+      <!-- Métodos de pago -->
+      <!-- Puntos toggle -->
+      <div class="pts-toggle-wrap" id="pts-toggle" onclick="togglePoints()" style="display:none">
+        <div class="pts-toggle-icon">⭐</div>
+        <div class="pts-toggle-info">
+          <div class="pts-toggle-name">Usar mis puntos</div>
+          <div class="pts-toggle-sub" id="pts-toggle-sub">—</div>
+        </div>
+        <div class="pts-toggle-check" id="pts-toggle-check"></div>
+      </div>
+
+      <div class="pay-methods">
+        <div class="pay-m-title">Selecciona tu método</div>
+        <div class="pay-method sel" onclick="selMethod('card',this)">
+          <div class="pay-method-icon">💳</div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Tarjeta débito / crédito</div>
+            <div class="pay-method-sub">Visa, Mastercard, Amex</div>
+          </div>
+          <div class="pay-radio"><div class="pay-radio-dot"></div></div>
+        </div>
+        <div class="pay-method" onclick="selMethod('nequi',this)">
+          <div class="pay-method-icon">📱</div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Nequi</div>
+            <div class="pay-method-sub">Pago con tu número de celular</div>
+          </div>
+          <div class="pay-radio"><div class="pay-radio-dot"></div></div>
+        </div>
+        <div class="pay-method" onclick="selMethod('pse',this)">
+          <div class="pay-method-icon">🏦</div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">PSE · Transferencia</div>
+            <div class="pay-method-sub">Débito desde tu cuenta bancaria</div>
+          </div>
+          <div class="pay-radio"><div class="pay-radio-dot"></div></div>
+        </div>
+        <div class="pay-method" onclick="selMethod('cash',this)">
+          <div class="pay-method-icon">💵</div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Efectivo en caja</div>
+            <div class="pay-method-sub">Paga al retirar tu pedido</div>
+          </div>
+          <div class="pay-radio"><div class="pay-radio-dot"></div></div>
+        </div>
+      </div>
+
+      <!-- Formulario tarjeta -->
+      <div class="card-form" id="form-card">
+        <div class="cf-g">
+          <label class="cf-l">Número de tarjeta</label>
+          <input class="cf-i" id="cf-num" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)">
+        </div>
+        <div class="cf-row">
+          <div class="cf-g">
+            <label class="cf-l">Vencimiento</label>
+            <input class="cf-i" id="cf-exp" placeholder="MM/AA" maxlength="5" oninput="fmtExp(this)">
+          </div>
+          <div class="cf-g">
+            <label class="cf-l">CVV</label>
+            <input class="cf-i" id="cf-cvv" placeholder="•••" maxlength="3" type="password">
+          </div>
+        </div>
+        <div class="cf-g">
+          <label class="cf-l">Nombre en la tarjeta</label>
+          <input class="cf-i" id="cf-name" placeholder="NOMBRE APELLIDO" style="text-transform:uppercase">
+        </div>
+        <div class="pay-tip">🔒 Simulación segura — no se almacenan datos reales de tarjeta.</div>
+      </div>
+
+      <!-- Formulario Nequi -->
+      <div class="alt-form" id="form-nequi">
+        <div class="cf-g">
+          <label class="cf-l">Número de celular</label>
+          <input class="cf-i" id="nq-phone" placeholder="3XX XXX XXXX" maxlength="13" oninput="fmtPhone(this)">
+        </div>
+        <div class="pay-tip">📲 Recibirás una notificación en tu app Nequi para aprobar el pago.</div>
+      </div>
+
+      <!-- Formulario PSE -->
+      <div class="alt-form" id="form-pse">
+        <div class="cf-g">
+          <label class="cf-l">Banco</label>
+          <select class="cf-i" id="pse-bank">
+            <option value="">Selecciona tu banco</option>
+            <option>Bancolombia</option>
+            <option>Banco de Bogotá</option>
+            <option>Davivienda</option>
+            <option>BBVA Colombia</option>
+            <option>Colpatria</option>
+            <option>Scotiabank Colpatria</option>
+          </select>
+        </div>
+        <div class="cf-g">
+          <label class="cf-l">Tipo de cuenta</label>
+          <select class="cf-i" id="pse-type">
+            <option>Ahorros</option>
+            <option>Corriente</option>
+          </select>
+        </div>
+        <div class="pay-tip">🏦 Serás redirigido a tu banco para completar el pago de forma segura.</div>
+      </div>
+
+      <!-- Efectivo -->
+      <div class="alt-form" id="form-cash">
+        <div class="pay-tip" style="margin-bottom:0">💵 Tu pedido quedará registrado y podrás pagar en la caja al recogerlo. Presenta el código de retiro.</div>
+      </div>
+
+      <button class="btn-pay" id="btn-pay-now" onclick="processPayment()">
+        <span>🔒</span><span id="btn-pay-lbl">Pagar ahora</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CONFIRM -->
+  <div id="s-confirm" class="screen">
+    <div class="conf-circle">✓</div>
+    <div class="conf-title">¡Pedido confirmado!</div>
+    <div class="conf-sub" id="conf-sub">Tu café está siendo preparado.<br>Recógelo en unos minutos.</div>
+    <div class="conf-pay-badge" id="conf-pay-badge">✅ Pago aprobado · Tarjeta</div>
+    <div class="conf-code-box">
+      <div class="conf-code-lbl">Código de retiro</div>
+      <div class="conf-code-num" id="conf-code">—</div>
+    </div>
+    <div class="loy-box">
+      <div class="loy-lbl" id="pts-msg">Ganaste puntos 🎉</div>
+      <div class="bar-track"><div class="bar-fill" id="pts-bar" style="width:0%"></div></div>
+      <div class="loy-prog" id="pts-prog"></div>
+    </div>
+    <button class="btn-main" onclick="resetApp()">Nuevo pedido</button>
+    <button style="background:none;border:none;color:var(--latte);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:12px;padding:8px" onclick="go('tracking')">Ver estado de mi pedido →</button>
+  </div>
+
+  <!-- LOYALTY -->
+  <div id="s-loyalty" class="screen" style="background:var(--cream);overflow-y:auto">
+    <div style="background:var(--espresso);padding:48px 24px 32px;border-radius:0 0 28px 28px">
+      <div style="color:var(--latte);font-size:13px">Tu programa</div>
+      <div style="font-family:'Playfair Display',serif;color:var(--foam);font-size:22px;margin-top:4px">Lealtad & Recompensas</div>
+    </div>
+    <div style="padding:20px 16px 100px">
+      <div style="background:var(--foam);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;border:2px solid rgba(200,135,74,.3)">
+        <div style="font-size:48px;margin-bottom:8px">⭐</div>
+        <div style="font-family:'Playfair Display',serif;font-size:32px;color:var(--caramel);font-weight:600" id="loy-pts">0</div>
+        <div style="color:var(--mocha);font-size:13px">puntos acumulados</div>
+        <div style="background:rgba(107,63,31,.08);border-radius:10px;margin-top:16px;height:8px">
+          <div style="background:var(--caramel);border-radius:10px;height:8px;transition:width .5s" id="loy-bar"></div>
+        </div>
+        <div style="font-size:12px;color:var(--mocha);margin-top:8px" id="loy-needed"></div>
+      </div>
+      <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--espresso);margin:16px 0 10px">Historial reciente</div>
+      <div id="loy-hist"></div>
+    </div>
+    <nav class="nav">
+      <button class="ni" onclick="go('home')"><span class="ni-icon">☕</span><span class="ni-lbl">Menú</span></button>
+      <button class="ni" onclick="go('cart')" style="position:relative"><span class="ni-icon">🧺</span><span class="ni-lbl">Carrito</span><span class="cb" id="cb3">0</span></button>
+      <button class="ni" onclick="go('tracking')" style="position:relative"><span class="ni-icon">📋</span><span class="ni-lbl">Pedidos</span><span class="track-pulse" id="tp3">0</span></button>
+      <button class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-lbl">Perfil</span></button>
+      <button class="ni on"><span class="ni-icon">⭐</span><span class="ni-lbl">Lealtad</span></button>
+    </nav>
+  </div>
+
+  <!-- TRACKING -->
+  <div id="s-tracking" class="screen">
+    <div class="track-hdr">
+      <div class="track-hdr-title">Mis pedidos</div>
+      <div class="track-hdr-sub" id="track-hdr-sub">Sigue tu pedido en tiempo real</div>
+    </div>
+    <div class="track-body" id="track-body"></div>
+    <nav class="nav">
+      <button class="ni" onclick="go('home')"><span class="ni-icon">☕</span><span class="ni-lbl">Menú</span></button>
+      <button class="ni" onclick="go('cart')" style="position:relative"><span class="ni-icon">🧺</span><span class="ni-lbl">Carrito</span><span class="cb" id="cb4">0</span></button>
+      <button class="ni on" onclick="go('tracking')" style="position:relative"><span class="ni-icon">📋</span><span class="ni-lbl">Pedidos</span><span class="track-pulse" id="tp4">0</span></button>
+      <button class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-lbl">Perfil</span></button>
+      <button class="ni" onclick="logout()"><span class="ni-icon">🚪</span><span class="ni-lbl">Salir</span></button>
+    </nav>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="s-profile" class="screen">
+    <div class="profile-hdr">
+      <div class="profile-avatar" id="prf-avatar">☕</div>
+      <div>
+        <div class="profile-hdr-name" id="prf-name">—</div>
+        <div class="profile-hdr-email" id="prf-email">—</div>
+      </div>
+    </div>
+    <div class="profile-body">
+      <div class="pf-card">
+        <div class="pf-card-title">☕ Programa de lealtad</div>
+        <div class="pf-row">
+          <div class="pf-lbl">Puntos acumulados</div>
+          <div class="pf-val pts" id="prf-pts">0 pts</div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Meta para café gratis</div>
+          <div class="pf-val" id="prf-goal">400 pts</div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Progreso</div>
+          <div class="pf-val" id="prf-pct">0%</div>
+        </div>
+        <div style="background:var(--cream);border-radius:4px;height:6px;margin-top:8px"><div style="background:var(--caramel);border-radius:4px;height:6px;transition:width .5s" id="prf-bar" style="width:0%"></div></div>
+        <div style="background:rgba(74,124,89,.1);border:1px solid rgba(74,124,89,.2);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12px;color:var(--leaf);line-height:1.5">
+          💡 <strong>Canjea tus puntos</strong> al pagar. Cada 500 pts = un café gratis descontado automáticamente.
+        </div>
+      </div>
+      <div class="pf-card">
+        <div class="pf-card-title">👤 Datos personales</div>
+        <div class="pf-row">
+          <div class="pf-lbl">Nombre</div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="pf-val" id="prf-disp-name">—</span><button class="pf-edit" onclick="openProfileEdit('name')">✏️</button></div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Correo</div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="pf-val" id="prf-disp-email">—</span><button class="pf-edit" onclick="openProfileEdit('email')">✏️</button></div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Contraseña</div>
+          <div><span class="pf-val">••••••••</span> <button class="pf-edit" onclick="openProfileEdit('pass')">Cambiar</button></div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Avatar</div>
+          <div><button class="pf-edit" onclick="openProfileEdit('avatar')">Cambiar emoji</button></div>
+        </div>
+      </div>
+      <div class="pf-card">
+        <div class="pf-card-title">📊 Estadísticas</div>
+        <div class="pf-row">
+          <div class="pf-lbl">Total pedidos</div>
+          <div class="pf-val" id="prf-total-orders">0</div>
+        </div>
+        <div class="pf-row">
+          <div class="pf-lbl">Total gastado</div>
+          <div class="pf-val" id="prf-total-spent">$0</div>
+        </div>
+      </div>
+      <button class="pf-edit-btn" onclick="go('home')">Ir al menú</button>
+      <button class="pf-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+    <nav class="nav">
+      <button class="ni" onclick="go('home')"><span class="ni-icon">☕</span><span class="ni-lbl">Menú</span></button>
+      <button class="ni" onclick="go('cart')" style="position:relative"><span class="ni-icon">🧺</span><span class="ni-lbl">Carrito</span><span class="cb" id="cb5">0</span></button>
+      <button class="ni" onclick="go('tracking')" style="position:relative"><span class="ni-icon">📋</span><span class="ni-lbl">Pedidos</span><span class="track-pulse" id="tp5">0</span></button>
+      <button class="ni on" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-lbl">Perfil</span></button>
+      <button class="ni" onclick="logout()"><span class="ni-icon">🚪</span><span class="ni-lbl">Salir</span></button>
+    </nav>
+  </div>
+
+  <!-- MODAL EDITAR PERFIL -->
+  <div class="modal-ov" id="profile-edit-modal">
+    <div class="modal pe-modal">
+      <h3 id="pe-title">Editar</h3>
+      <div id="pe-body"></div>
+      <div class="modal-btns">
+        <button class="pe-cancel" onclick="closeProfileEdit()">Cancelar</button>
+        <button class="pe-save" onclick="saveProfileEdit()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="s-admin" class="screen">
+    <div class="a-hdr">
+      <div><div class="a-lbl">Panel de control</div><div class="a-title">Aroma & Grano ☕</div></div>
+      <button class="a-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+    <div class="a-tabs">
+      <button class="at on" onclick="aTab('overview',this)">Resumen</button>
+      <button class="at" onclick="aTab('orders',this)">Pedidos</button>
+      <button class="at" onclick="aTab('menu',this)">Menú</button>
+      <button class="at" onclick="aTab('users',this)">Usuarios</button>
+      <button class="at" onclick="aTab('payments',this)">Pagos</button>
+      <button class="at" onclick="aTab('reports',this)">Reportes</button>
+      <button class="at" onclick="aTab('config',this)">Config.</button>
+    </div>
+    <div class="a-body">
+      <!-- RESUMEN -->
+      <div class="tp on" id="tp-overview">
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-lbl">Pedidos hoy</div><div class="stat-val" id="st-orders">0</div><div class="stat-trend trend-up" id="st-orders-trend"></div></div>
+          <div class="stat"><div class="stat-lbl">Ventas hoy</div><div class="stat-val" id="st-sales">$0</div><div class="stat-trend" id="st-sales-trend"></div></div>
+          <div class="stat"><div class="stat-lbl">Clientes</div><div class="stat-val" id="st-users">0</div></div>
+          <div class="stat"><div class="stat-lbl">Productos</div><div class="stat-val" id="st-prods">0</div></div>
+        </div>
+        <div class="sec-title">Actividad de pagos hoy</div>
+        <div id="a-pay-today" style="margin-bottom:14px"></div>
+        <div class="sec-title">Pedidos recientes</div>
+        <div id="a-recent"></div>
+      </div>
+      <!-- PEDIDOS -->
+      <div class="tp" id="tp-orders">
+        <div class="ofrow">
+          <button class="ofb on" onclick="oFilt('all',this)">Todos</button>
+          <button class="ofb" onclick="oFilt('pending',this)">Pendientes</button>
+          <button class="ofb" onclick="oFilt('preparing',this)">Preparando</button>
+          <button class="ofb" onclick="oFilt('ready',this)">Listos</button>
+          <button class="ofb" onclick="oFilt('delivered',this)">Entregados</button>
+        </div>
+        <div id="a-orders"></div>
+      </div>
+      <!-- MENÚ -->
+      <div class="tp" id="tp-menu">
+        <div id="a-menu"></div>
+        <button class="add-prod-btn" onclick="openAdd()"><span style="font-size:18px">+</span> Agregar producto</button>
+      </div>
+      <!-- USUARIOS -->
+      <div class="tp" id="tp-users">
+        <div style="background:var(--admin-card);border:1px solid rgba(200,135,74,.1);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
+          <input class="mi2" id="user-search" placeholder="🔍  Buscar usuario..." oninput="renderAUsers()" style="flex:1;margin:0">
+        </div>
+        <div id="a-users"></div>
+      </div>
+      <!-- PAGOS -->
+      <div class="tp" id="tp-payments">
+        <div class="pay-stat-row">
+          <div class="pay-stat"><div class="pay-stat-val" id="ps-total">$0</div><div class="pay-stat-lbl">Total cobrado</div></div>
+          <div class="pay-stat"><div class="pay-stat-val" id="ps-count">0</div><div class="pay-stat-lbl">Transacciones</div></div>
+          <div class="pay-stat"><div class="pay-stat-val" id="ps-avg">$0</div><div class="pay-stat-lbl">Ticket promedio</div></div>
+        </div>
+        <div class="pay-donut-wrap">
+          <div class="rep-chart-title">Distribución por método</div>
+          <canvas id="donut-canvas" width="120" height="120" style="display:block;margin:0 auto"></canvas>
+          <div class="pay-legend" id="pay-legend"></div>
+        </div>
+        <div class="sec-title">Transacciones recientes</div>
+        <div id="pay-tx-list"></div>
+      </div>
+      <!-- REPORTES -->
+      <div class="tp" id="tp-reports">
+        <div class="rep-chart-wrap">
+          <div class="rep-chart-title">Ventas últimos 7 días (COP)</div>
+          <div class="rep-bars" id="rep-bars"></div>
+        </div>
+        <div class="rep-top">
+          <div class="rep-chart-title" style="margin-bottom:10px">🏆 Productos más vendidos</div>
+          <div id="rep-top-products"></div>
+        </div>
+        <button class="rep-export-btn" onclick="exportCSV()">📥 Exportar reporte CSV</button>
+        <button class="rep-export-btn" onclick="printReport()">🖨️ Imprimir resumen</button>
+      </div>
+      <!-- CONFIG -->
+      <div class="tp" id="tp-config">
+        <div class="cfg-section">
+          <div class="cfg-section-title">☕ Operación</div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Aceptar pedidos</div><div class="cfg-row-sub">Habilita o pausa las órdenes</div></div>
+            <div class="toggle on" id="cfg-orders" onclick="toggleCfg('orders',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Pickup disponible</div><div class="cfg-row-sub">Retiro en tienda activo</div></div>
+            <div class="toggle on" id="cfg-pickup" onclick="toggleCfg('pickup',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Tiempo de preparación</div><div class="cfg-row-sub">Minutos estimados</div></div>
+            <input class="cfg-input" id="cfg-time" value="8" type="number" min="1" max="60">
+          </div>
+        </div>
+        <div class="cfg-section">
+          <div class="cfg-section-title">💳 Métodos de pago</div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Tarjeta débito/crédito</div></div>
+            <div class="toggle on" id="cfg-pay-card" onclick="toggleCfg('pay-card',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Nequi</div></div>
+            <div class="toggle on" id="cfg-pay-nequi" onclick="toggleCfg('pay-nequi',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">PSE · Transferencia</div></div>
+            <div class="toggle on" id="cfg-pay-pse" onclick="toggleCfg('pay-pse',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Efectivo en caja</div></div>
+            <div class="toggle on" id="cfg-pay-cash" onclick="toggleCfg('pay-cash',this)"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <div class="cfg-section">
+          <div class="cfg-section-title">⭐ Lealtad</div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Programa activo</div></div>
+            <div class="toggle on" id="cfg-loyalty" onclick="toggleCfg('loyalty',this)"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Meta de puntos</div><div class="cfg-row-sub">Para café gratis</div></div>
+            <input class="cfg-input" id="cfg-goal" value="400" type="number">
+          </div>
+          <div class="cfg-row">
+            <div><div class="cfg-row-label">Pts por cada $500</div></div>
+            <input class="cfg-input" id="cfg-pts-rate" value="1" type="number" min="1">
+          </div>
+        </div>
+        <button class="cfg-save-btn" onclick="saveCfg()">Guardar configuración</button>
+      </div>
+    </div>
+
+    <!-- MODAL PRODUCTO -->
+    <div class="modal-ov" id="prod-modal">
+      <div class="modal">
+        <h3 id="modal-t">Producto</h3>
+        <div class="mg"><label class="ml">Nombre</label><input class="mi2" id="m-name" placeholder="Latte Colombia"></div>
+        <div class="mg"><label class="ml">Origen</label><input class="mi2" id="m-origin" placeholder="Huila · Natural"></div>
+        <div class="mg"><label class="ml">Precio (COP)</label><input class="mi2" id="m-price" type="number" placeholder="12000"></div>
+        <div class="mg"><label class="ml">Categoría</label>
+          <select class="mi2" id="m-cat">
+            <option value="espresso">Espresso</option>
+            <option value="cold">Cold Brew</option>
+            <option value="filter">Filtrado</option>
+            <option value="food">Repostería</option>
+          </select>
+        </div>
+        <div class="mg"><label class="ml">Emoji</label><input class="mi2" id="m-emoji" placeholder="☕"></div>
+        <div class="mg"><label class="ml">Notas de cata (separadas por coma)</label><input class="mi2" id="m-notes" placeholder="Caramelo, Nuez, Durazno"></div>
+        <div class="mg"><label class="ml">Descripción</label><input class="mi2" id="m-desc" placeholder="Descripción breve"></div>
+        <div class="modal-btns">
+          <button class="m-cancel" onclick="closeModal()">Cancelar</button>
+          <button class="m-save" onclick="saveProd()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL AJUSTE PUNTOS -->
+    <div class="modal-ov" id="pts-modal">
+      <div class="modal">
+        <h3>Ajustar puntos</h3>
+        <div style="color:rgba(212,160,106,.7);font-size:13px;margin-bottom:16px" id="pts-modal-user"></div>
+        <div class="mg"><label class="ml">Puntos actuales</label><input class="mi2" id="pts-current" type="number" readonly style="opacity:.6"></div>
+        <div class="mg"><label class="ml">Ajuste (+ para sumar, - para restar)</label><input class="mi2" id="pts-delta" type="number" placeholder="ej: 50 ó -30"></div>
+        <div class="mg"><label class="ml">Motivo</label><input class="mi2" id="pts-reason" placeholder="Cortesía, error, etc."></div>
+        <div class="modal-btns">
+          <button class="m-cancel" onclick="closePtsModal()">Cancelar</button>
+          <button class="m-save" onclick="applyPts()">Aplicar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script src="js/app.js"></script>
+</body>
+</html>
