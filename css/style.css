@@ -406,6 +406,14 @@
   .rep-export-btn { width:100%; background:rgba(200,135,74,.1); border:1.5px solid rgba(200,135,74,.3); color:var(--caramel); padding:12px; border-radius:12px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; }
   .rep-export-btn:hover { background:rgba(200,135,74,.2); }
 
+  /* ── RESPONSIVE: full-screen en móviles ── */
+  @media (max-width: 480px) {
+    body { padding: 0; align-items: stretch; }
+    #app { width: 100%; min-height: 100dvh; border-radius: 0; box-shadow: none; }
+    .screen { min-height: 100dvh; }
+    #s-admin { min-height: 100dvh; }
+  }
+
   /* ── ADMIN: CONFIGURACIÓN tab ── */
   .cfg-section { background:var(--admin-card); border:1px solid rgba(200,135,74,.1); border-radius:14px; padding:16px; margin-bottom:14px; }
   .cfg-section-title { color:var(--caramel); font-size:11px; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px; }
