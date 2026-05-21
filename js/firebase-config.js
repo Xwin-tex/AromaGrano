@@ -1,34 +1,21 @@
-// ═══════════════════════════════════════════════════
-//  FIREBASE CONFIGURATION
-//  ⚠ Reemplaza estos valores con los de tu proyecto
-// ═══════════════════════════════════════════════════
-// 1. Ve a https://console.firebase.google.com
-// 2. Crea un proyecto (o usa uno existente)
-// 3. Ve a: Project settings → General → Your apps → Web
-// 4. Copia el objeto firebaseConfig aquí:
-// ═══════════════════════════════════════════════════
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAquiVaTuApiKey",
-  authDomain: "tu-proyecto.firebaseapp.com",
-  projectId: "tu-proyecto",
-  storageBucket: "tu-proyecto.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyB2sosYk1sNuth3qFZ3pdZFOnh9rtsxzjY",
+  authDomain: "aromagrano.firebaseapp.com",
+  projectId: "aromagrano",
+  storageBucket: "aromagrano.firebasestorage.app",
+  messagingSenderId: "369544740782",
+  appId: "1:369544740782:web:4b2a36f115222066f3923f",
+  measurementId: "G-VC189BH75F"
 };
 
-// ═══════════════════════════════════════════════════
-//  FIRESTORE SECURITY RULES (configurar en Firebase Console)
-// ═══════════════════════════════════════════════════
-// Copia estas reglas en Firestore → Rules:
-//
-//   rules_version = '2';
-//   service cloud.firestore {
-//     match /databases/{database}/documents {
-//       match /{document=**} {
-//         allow read, write: if true;
-//       }
-//     }
-//   }
-//
-// ═══════════════════════════════════════════════════
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
