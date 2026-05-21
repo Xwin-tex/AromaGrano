@@ -64,7 +64,7 @@ const DEFAULT_CONFIG = {
 const getMenu    = () => DB.get('menu')    || [];
 const getUsers   = () => DB.get('users')   || [];
 const getOrders  = () => DB.get('orders')  || [];
-const getCfg     = () => DB.get('config')  || {};
+const getCfg     = () => DB.get('config')  || DEFAULT_CONFIG;
 const saveMenu   = m  => DB.set('menu', m);
 const saveUsers  = u  => DB.set('users', u);
 const saveOrders = o  => DB.set('orders', o);
@@ -377,6 +377,15 @@ function renderCart() {
     <div class="sr"><span>Retiro en tienda</span><span style="color:var(--leaf)">Gratis</span></div>
     <div class="sr total"><span>Total</span><span>$${sub.toLocaleString('es-CO')}</span></div>`;
   document.getElementById('cart-total').textContent = '$' + sub.toLocaleString('es-CO');
+  // Actualizar tiempo estimado desde config
+  const pickupEl = document.getElementById('cart-pickup-text');
+  if (pickupEl) {
+    const c = getCfg();
+    pickupEl.textContent = `Tiempo estimado: ${c.prepTime || 8} min · Sucursal Centro`;
+  }
+  // Ocultar pickup si está desactivado
+  const pickupWrap = document.getElementById('cart-pickup');
+  if (pickupWrap) pickupWrap.style.display = (getCfg().pickup !== false) ? '' : 'none';
 }
 
 // ══════════════════════════════════════════════
@@ -384,6 +393,8 @@ function renderCart() {
 // ══════════════════════════════════════════════
 function goToPayment() {
   if (!cart.length) { showToast('Tu carrito está vacío', true); return; }
+  const cfg = getCfg();
+  if (cfg.orders === false) { showToast('Los pedidos están cerrados temporalmente ☕', true); return; }
   renderPaymentScreen();
   go('payment');
 }
@@ -467,11 +478,12 @@ function processPayment() {
 }
 
 function finishOrder() {
+  const cfg = getCfg();
+  if (cfg.orders === false) { showToast('Los pedidos están cerrados ☕', true); go('home'); return; }
   const code    = CODES[Math.floor(Math.random() * CODES.length)];
   const total   = cartTotal();
   const disc    = pointsDiscount();
   const summary = cart.map(i => i.name + (i.size ? ' · ' + i.size : '')).join(', ');
-  const cfg     = getCfg();
   const ptsRate = cfg.ptsRate || 1;
   const ptsEarned = Math.floor(total / 500) * ptsRate;
   const methodLabels = { card:'Tarjeta', nequi:'Nequi', pse:'PSE', cash:'Efectivo' };
@@ -601,15 +613,24 @@ function renderPaymentScreen() {
   let html = cart.map(p =>
     `<div class="pay-sum-item"><span>${p.name}${p.size ? ' · ' + p.size : ''} ×${p.qty}</span><span>$${(p.unitPrice*p.qty).toLocaleString('es-CO')}</span></div>`
   ).join('');
+  const cfg = getCfg();
   if (disc > 0) {
-    html += `<div class="pay-discount-row"><span>⭐ Descuento por puntos (-${Math.floor(curUser.pts/(getCfg().goal||GOAL))} café${Math.floor(curUser.pts/(getCfg().goal||GOAL))>1?'s':''} gratis)</span><span>-$${disc.toLocaleString('es-CO')}</span></div>`;
+    html += `<div class="pay-discount-row"><span>⭐ Descuento por puntos (-${Math.floor(curUser.pts/(cfg.goal||GOAL))} café${Math.floor(curUser.pts/(cfg.goal||GOAL))>1?'s':''} gratis)</span><span>-$${disc.toLocaleString('es-CO')}</span></div>`;
   }
   document.getElementById('pay-items-list').innerHTML = html;
-  selMethod('card', document.querySelector('.pay-method'));
+
+  // Mostrar solo métodos de pago habilitados en config
+  const payMethods = ['card','nequi','pse','cash'];
+  payMethods.forEach(m => {
+    const el = document.getElementById('pay-method-' + m);
+    const key = 'pay' + m.charAt(0).toUpperCase() + m.slice(1);
+    if (el) el.style.display = (cfg[key] !== false) ? '' : 'none';
+  });
+  const first = payMethods.find(m => document.getElementById('pay-method-' + m)?.offsetParent !== null);
+  selMethod(first || 'card', document.getElementById('pay-method-' + (first || 'card')));
 
   // Points toggle visibility
   const pt = document.getElementById('pts-toggle');
-  const cfg = getCfg();
   const goal = cfg.goal || GOAL;
   if (curUser && cfg.loyalty !== false && curUser.pts >= goal) {
     pt.style.display = 'flex';
@@ -645,6 +666,8 @@ function renderProfile() {
   document.getElementById('prf-disp-email').textContent = curUser.email;
   document.getElementById('prf-total-orders').textContent = orders.length;
   document.getElementById('prf-total-spent').textContent = '$' + spent.toLocaleString('es-CO');
+  const tip = document.getElementById('prf-pts-tip');
+  if (tip) tip.innerHTML = `💡 <strong>Canjea tus puntos</strong> al pagar. Cada <strong>${goal} pts</strong> = un café gratis descontado automáticamente.`;
 }
 
 function openProfileEdit(field) {
@@ -1180,6 +1203,9 @@ function loadCfg() {
 
 function toggleCfg(key, el) {
   el.classList.toggle('on');
+  const cfg = getCfg();
+  cfg[key] = el.classList.contains('on');
+  DB.set('config', cfg);
 }
 
 function saveCfg() {

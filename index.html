@@ -149,7 +149,7 @@
     </div>
     <div class="cart-items" id="cart-list"></div>
     <div class="cart-sum" id="cart-sum"></div>
-    <div class="pickup"><span style="font-size:20px">🟢</span><span><strong>Tiempo estimado:</strong> 8 min · Sucursal Centro</span></div>
+    <div class="pickup" id="cart-pickup"><span style="font-size:20px">🟢</span><span id="cart-pickup-text"><strong>Tiempo estimado:</strong> 8 min · Sucursal Centro</span></div>
     <div class="ck-bar" onclick="goToPayment()">
       <span>Confirmar y pagar</span>
       <span id="cart-total">$0</span>
@@ -192,7 +192,7 @@
 
       <div class="pay-methods">
         <div class="pay-m-title">Selecciona tu método</div>
-        <div class="pay-method sel" onclick="selMethod('card',this)">
+        <div class="pay-method sel" id="pay-method-card" onclick="selMethod('card',this)">
           <div class="pay-method-icon">💳</div>
           <div class="pay-method-info">
             <div class="pay-method-name">Tarjeta débito / crédito</div>
@@ -200,7 +200,7 @@
           </div>
           <div class="pay-radio"><div class="pay-radio-dot"></div></div>
         </div>
-        <div class="pay-method" onclick="selMethod('nequi',this)">
+        <div class="pay-method" id="pay-method-nequi" onclick="selMethod('nequi',this)">
           <div class="pay-method-icon">📱</div>
           <div class="pay-method-info">
             <div class="pay-method-name">Nequi</div>
@@ -208,7 +208,7 @@
           </div>
           <div class="pay-radio"><div class="pay-radio-dot"></div></div>
         </div>
-        <div class="pay-method" onclick="selMethod('pse',this)">
+        <div class="pay-method" id="pay-method-pse" onclick="selMethod('pse',this)">
           <div class="pay-method-icon">🏦</div>
           <div class="pay-method-info">
             <div class="pay-method-name">PSE · Transferencia</div>
@@ -216,7 +216,7 @@
           </div>
           <div class="pay-radio"><div class="pay-radio-dot"></div></div>
         </div>
-        <div class="pay-method" onclick="selMethod('cash',this)">
+        <div class="pay-method" id="pay-method-cash" onclick="selMethod('cash',this)">
           <div class="pay-method-icon">💵</div>
           <div class="pay-method-info">
             <div class="pay-method-name">Efectivo en caja</div>
@@ -381,8 +381,8 @@
           <div class="pf-val" id="prf-pct">0%</div>
         </div>
         <div style="background:var(--cream);border-radius:4px;height:6px;margin-top:8px"><div style="background:var(--caramel);border-radius:4px;height:6px;transition:width .5s" id="prf-bar" style="width:0%"></div></div>
-        <div style="background:rgba(74,124,89,.1);border:1px solid rgba(74,124,89,.2);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12px;color:var(--leaf);line-height:1.5">
-          💡 <strong>Canjea tus puntos</strong> al pagar. Cada 500 pts = un café gratis descontado automáticamente.
+        <div style="background:rgba(74,124,89,.1);border:1px solid rgba(74,124,89,.2);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12px;color:var(--leaf);line-height:1.5" id="prf-pts-tip">
+          💡 <strong>Canjea tus puntos</strong> al pagar. Cada <strong>500 pts</strong> = un café gratis descontado automáticamente.
         </div>
       </div>
       <div class="pf-card">
