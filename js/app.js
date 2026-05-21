@@ -21,6 +21,21 @@ const DB = {
       _cache[k] = snap.exists ? JSON.parse(snap.data().value) : fallback;
     } catch(e) { _cache[k] = fallback; }
     return _cache[k];
+  },
+  _unsubs: [],
+  subscribe(k, fn) {
+    const unsub = FS.collection('data').doc(k).onSnapshot(snap => {
+      if (snap.exists) {
+        _cache[k] = JSON.parse(snap.data().value);
+        if (fn) fn(_cache[k]);
+      }
+    });
+    this._unsubs.push(unsub);
+    return unsub;
+  },
+  unsubscribeAll() {
+    this._unsubs.forEach(u => u());
+    this._unsubs.length = 0;
   }
 };
 
@@ -93,17 +108,15 @@ async function seedDB() {
 async function loadDB() {
   await seedDB();
   if (!('users' in _cache)) {
-    _cache['users']  = await DB.load('users', DEFAULT_USERS);
-    _cache['menu']   = await DB.load('menu', DEFAULT_MENU);
-    _cache['orders'] = await DB.load('orders', []);
-    _cache['config'] = await DB.load('config', DEFAULT_CONFIG);
+    await Promise.all([
+      DB.load('users', DEFAULT_USERS),
+      DB.load('menu', DEFAULT_MENU),
+      DB.load('orders', []),
+      DB.load('config', DEFAULT_CONFIG),
+    ]);
   }
-  // Cargar carritos de usuarios
-  for (const u of getUsers()) {
-    if (!(`cart_${u.id}` in _cache)) {
-      await DB.load(`cart_${u.id}`, []);
-    }
-  }
+  const carts = getUsers().map(u => DB.load(`cart_${u.id}`, []));
+  await Promise.all(carts);
 }
 
 // ══════════════════════════════════════════════
@@ -136,7 +149,35 @@ async function init() {
   if (loadEl) loadEl.style.display = 'none';
   if (btnEl)  btnEl.style.display  = 'block';
 
-  // Escuchar cambios de autenticación
+  // ── Suscripciones en tiempo real ──
+  DB.subscribe('orders', () => {
+    updateTrackBadges();
+    const s = document.querySelector('.screen.active');
+    if (!s) return;
+    if (s.id === 's-tracking') renderTracking();
+    if (s.id === 's-admin' || s.id === 's-payment') { renderOverview(); renderAOrders(); renderPaymentsTab(); renderReports(); }
+  });
+  DB.subscribe('menu', () => {
+    const s = document.querySelector('.screen.active');
+    if (s && (s.id === 's-home' || s.id === 's-detail')) renderMenu();
+    if (s && s.id === 's-admin') renderAMenu();
+  });
+  DB.subscribe('users', () => {
+    if (curUser) {
+      const upd = getUsers().find(u => u.id === curUser.id);
+      if (upd) { curUser.pts = upd.pts; curUser.name = upd.name; }
+    }
+    const s = document.querySelector('.screen.active');
+    if (s && s.id === 's-home') document.getElementById('h-pts').textContent = (curUser?.pts || 0) + ' pts';
+    if (s && s.id === 's-admin') renderAUsers();
+    if (s && s.id === 's-profile') renderProfile();
+  });
+  DB.subscribe('config', () => {
+    const s = document.querySelector('.screen.active');
+    if (s && s.id === 's-admin') loadCfg();
+  });
+
+  // ── Auth ──
   firebase.auth().onAuthStateChanged(user => {
     if (user) {
       const u = getUsers().find(u => u.id === user.uid);
@@ -826,29 +867,10 @@ function renderTracking() {
 
   body.innerHTML = html;
 
-  // Update ETAs every 15s
+  // Refresh elapsed time every 15s (status changes via snapshot)
   trackInterval = setInterval(() => {
-    const updated = getActiveOrders();
-    const changed = JSON.stringify(updated.map(o => o.status)) !== JSON.stringify(active.map(o => o.status));
-    if (changed) {
-      renderTracking();
-    } else {
-      // Soft update: refresh elapsed + ETA text only
-      updated.forEach(o => {
-        const card = document.getElementById('tc-' + o.id);
-        if (!card) return;
-        const meta = card.querySelector('.track-meta');
-        if (meta) {
-          const delayed = isDelayed(o);
-          const eta = getETA(o);
-          const wasDelayed = card.querySelector('.eta-box.delayed');
-          if (delayed && !wasDelayed) renderTracking();
-          else {
-            const timeSpans = card.querySelectorAll('.track-meta .eta-box, .track-meta span');
-          }
-        }
-      });
-    }
+    const el = document.getElementById('s-tracking');
+    if (el && el.classList.contains('active')) renderTracking();
   }, 15000);
 }
 
