@@ -1,47 +1,33 @@
 // ══════════════════════════════════════════════
-//  BASE DE DATOS PERSISTENTE — window.storage
+//  FIREBASE — Firestore + Auth
 // ══════════════════════════════════════════════
+const FB = firebase.initializeApp(firebaseConfig);
+const FS = firebase.firestore();
 
-// Cache en memoria para acceso síncrono en el resto del código
+// Cache en memoria para acceso síncrono
 const _cache = {};
 
 const DB = {
-  // Síncrono: lee desde cache en memoria
-  get(k) {
-    return (k in _cache) ? _cache[k] : null;
-  },
-  // Síncrono en memoria + persiste asíncronamente
+  get(k) { return (k in _cache) ? _cache[k] : null; },
   set(k, v) {
     _cache[k] = v;
-    if (window.storage) {
-      window.storage.set('ag_' + k, JSON.stringify(v)).catch(e => console.warn('DB.set error:', k, e));
-    }
+    FS.collection('data').doc(k).set({ value: JSON.stringify(v) })
+      .catch(e => console.warn('DB.set error:', k, e));
   },
-  init(k, v) {
-    if (!(k in _cache)) this.set(k, v);
-  },
-  // Carga inicial desde storage persistente
+  init(k, v) { if (!(k in _cache)) this.set(k, v); },
   async load(k, fallback) {
-    if (window.storage) {
-      try {
-        const res = await window.storage.get('ag_' + k);
-        _cache[k] = res ? JSON.parse(res.value) : fallback;
-      } catch(e) {
-        _cache[k] = fallback;
-      }
-    } else {
-      // Fallback a localStorage si no hay window.storage
-      try { _cache[k] = JSON.parse(localStorage.getItem('ag_' + k)) ?? fallback; }
-      catch(e) { _cache[k] = fallback; }
-    }
+    try {
+      const snap = await FS.collection('data').doc(k).get();
+      _cache[k] = snap.exists ? JSON.parse(snap.data().value) : fallback;
+    } catch(e) { _cache[k] = fallback; }
     return _cache[k];
   }
 };
 
 const DEFAULT_USERS = [
-  { id:'u1', email:'sofia@grano.co',  pass:'123456',   name:'Sofía Martínez', role:'client', pts:260, avatar:'☕' },
-  { id:'u2', email:'carlos@grano.co', pass:'cafe2024', name:'Carlos Vélez',   role:'client', pts:185, avatar:'🫗' },
-  { id:'u3', email:'admin@grano.co',  pass:'admin123', name:'Administrador',  role:'admin',  pts:0,   avatar:'⚙️' },
+  { email:'admin@grano.co',  pass:'admin123', name:'Administrador',  role:'admin',  pts:0,   avatar:'⚙️' },
+  { email:'sofia@grano.co',  pass:'123456',   name:'Sofía Martínez', role:'client', pts:260, avatar:'☕' },
+  { email:'carlos@grano.co', pass:'cafe2024', name:'Carlos Vélez',   role:'client', pts:185, avatar:'🫗' },
 ];
 const DEFAULT_MENU = [
   { id:1, name:'Espresso Etiopía',   origin:'Yirgacheffe · Lavado', cat:'espresso', emoji:'☕', price:9500,  notes:['Durazno','Jazmín','Cítrico'],        desc:'Proceso lavado de altura. Claridad absoluta en taza.', bg:'#2C1A0E' },
@@ -59,30 +45,64 @@ const DEFAULT_CONFIG = {
   loyalty: true, goal: 400, ptsRate: 1
 };
 
-// ── Helpers síncronos (leen desde cache) ──
+// ── Helpers síncronos ──
 const getMenu    = () => DB.get('menu')    || [];
 const getUsers   = () => DB.get('users')   || [];
 const getOrders  = () => DB.get('orders')  || [];
-const getSession = () => DB.get('session');
 const getCfg     = () => DB.get('config')  || {};
 const saveMenu   = m  => DB.set('menu', m);
 const saveUsers  = u  => DB.set('users', u);
 const saveOrders = o  => DB.set('orders', o);
-const saveSession= s  => DB.set('session', s);
 
-// ── Carga asíncrona inicial ──
-async function loadDB() {
+// ── Carga semilla (solo primera vez) ──
+async function seedDB() {
+  const snap = await FS.collection('data').doc('users').get();
+  if (snap.exists) return; // ya hay datos
+
+  // Crear cuentas en Firebase Auth
+  const seeded = [];
+  for (const du of DEFAULT_USERS) {
+    let uid;
+    try {
+      const cred = await firebase.auth().createUserWithEmailAndPassword(du.email, du.pass);
+      uid = cred.user.uid;
+      await firebase.auth().signOut();
+    } catch(e) {
+      // ya existe — obtenemos el uid
+      const cred = await firebase.auth().signInWithEmailAndPassword(du.email, du.pass);
+      uid = cred.user.uid;
+      await firebase.auth().signOut();
+    }
+    seeded.push({ ...du, id: uid });
+  }
+  // Guardar datos iniciales en Firestore
   await Promise.all([
-    DB.load('users',   DEFAULT_USERS),
-    DB.load('menu',    DEFAULT_MENU),
-    DB.load('orders',  []),
-    DB.load('session', null),
-    DB.load('config',  DEFAULT_CONFIG),
+    FS.collection('data').doc('users').set({ value: JSON.stringify(seeded) }),
+    FS.collection('data').doc('menu').set({ value: JSON.stringify(DEFAULT_MENU) }),
+    FS.collection('data').doc('config').set({ value: JSON.stringify(DEFAULT_CONFIG) }),
+    FS.collection('data').doc('orders').set({ value: JSON.stringify([]) }),
   ]);
-  // Cargar carritos de usuarios guardados
-  const users = getUsers();
-  for (const u of users) {
-    await DB.load('cart_' + u.id, []);
+  // Poblar cache
+  _cache['users'] = seeded;
+  _cache['menu'] = DEFAULT_MENU;
+  _cache['config'] = DEFAULT_CONFIG;
+  _cache['orders'] = [];
+}
+
+// ── Carga desde Firestore ──
+async function loadDB() {
+  await seedDB();
+  if (!('users' in _cache)) {
+    _cache['users']  = await DB.load('users', DEFAULT_USERS);
+    _cache['menu']   = await DB.load('menu', DEFAULT_MENU);
+    _cache['orders'] = await DB.load('orders', []);
+    _cache['config'] = await DB.load('config', DEFAULT_CONFIG);
+  }
+  // Cargar carritos de usuarios
+  for (const u of getUsers()) {
+    if (!(`cart_${u.id}` in _cache)) {
+      await DB.load(`cart_${u.id}`, []);
+    }
   }
 }
 
@@ -109,21 +129,21 @@ function loadCart()  { if(curUser) cart = DB.get('cart_'+curUser.id) || []; }
 //  INICIO
 // ══════════════════════════════════════════════
 async function init() {
-  // Mostrar splash mientras se carga la BD
   go('splash');
   await loadDB();
-  // Ocultar spinner, mostrar botón
   const loadEl = document.getElementById('splash-loading');
   const btnEl  = document.getElementById('splash-btn');
   if (loadEl) loadEl.style.display = 'none';
   if (btnEl)  btnEl.style.display  = 'block';
 
-  const sid = getSession();
-  if (sid) {
-    const u = getUsers().find(u => u.id === sid);
-    if (u) { curUser = u; afterLogin(); return; }
-  }
-  go('login');
+  // Escuchar cambios de autenticación
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      const u = getUsers().find(u => u.id === user.uid);
+      if (u) { curUser = u; loadCart(); afterLogin(); return; }
+    }
+    if (!curUser) go('login');
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -137,33 +157,44 @@ function atab(tab, btn) {
   ['li-err','rg-err'].forEach(id => { document.getElementById(id).style.display = 'none'; });
 }
 
-function doLogin() {
+async function doLogin() {
   const email = v('li-email'), pass = v('li-pass');
   const err = document.getElementById('li-err');
   err.style.display = 'none';
   if (!email || !pass) { showErr(err, 'Completa todos los campos.'); return; }
-  const u = getUsers().find(u => u.email === email && u.pass === pass);
-  if (!u) { showErr(err, 'Correo o contraseña incorrectos.'); return; }
-  curUser = u; saveSession(u.id); afterLogin();
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged se encarga del resto
+  } catch(e) {
+    showErr(err, e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential'
+      ? 'Correo o contraseña incorrectos.' : 'Error de conexión. Intenta de nuevo.');
+  }
 }
 
-function doReg() {
+async function doReg() {
   const name = v('rg-name'), email = v('rg-email'), pass = v('rg-pass');
   const err = document.getElementById('rg-err');
   err.style.display = 'none';
   if (!name || !email || !pass) { showErr(err, 'Completa todos los campos.'); return; }
   if (pass.length < 6) { showErr(err, 'Contraseña mínimo 6 caracteres.'); return; }
-  const users = getUsers();
-  if (users.find(u => u.email === email)) { showErr(err, 'Este correo ya está registrado.'); return; }
-  const newU = { id: 'u' + Date.now(), email, pass, name, role: 'client', pts: 0, avatar: '☕' };
-  users.push(newU); saveUsers(users);
-  _cache['cart_' + newU.id] = [];  // inicializar carrito en cache
-  curUser = newU; saveSession(newU.id);
-  showToast('¡Bienvenido/a! ☕'); afterLogin();
+  try {
+    const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+    const isFirst = getUsers().length === 0;
+    const newU = { id: cred.user.uid, email, pass, name, role: isFirst ? 'admin' : 'client', pts: 0, avatar: '☕' };
+    const users = getUsers();
+    users.push(newU); saveUsers(users);
+    _cache['cart_' + newU.id] = [];
+    curUser = newU;
+    showToast('¡Bienvenido/a! ☕');
+    afterLogin();
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') showErr(err, 'Este correo ya está registrado.');
+    else if (e.code === 'auth/weak-password') showErr(err, 'Contraseña muy débil.');
+    else showErr(err, 'Error al crear cuenta. Intenta de nuevo.');
+  }
 }
 
 function afterLogin() {
-  loadCart();
   if (curUser.role === 'admin') {
     renderAdmin(); go('admin');
   } else {
@@ -174,7 +205,8 @@ function afterLogin() {
 }
 
 function logout() {
-  curUser = null; cart = []; saveSession(null); saveCart();
+  curUser = null; cart = [];
+  firebase.auth().signOut();
   updateBadges(); go('login');
 }
 
@@ -437,7 +469,6 @@ function finishOrder() {
     const users = getUsers();
     const idx = users.findIndex(u => u.id === curUser.id);
     if (idx >= 0) { users[idx].pts = curUser.pts; saveUsers(users); }
-    saveSession(curUser.id);
     document.getElementById('h-pts').textContent = curUser.pts + ' pts';
   }
 
@@ -611,7 +642,6 @@ function pickAvatar(av, el) {
   const users = getUsers();
   const idx = users.findIndex(u => u.id === curUser.id);
   if (idx >= 0) { users[idx].avatar = av; saveUsers(users); }
-  saveSession(curUser.id);
 }
 
 function saveProfileEdit() {
@@ -629,7 +659,6 @@ function saveProfileEdit() {
     const users = getUsers();
     const idx = users.findIndex(u => u.id === curUser.id);
     if (idx >= 0) { users[idx].pass = newP; saveUsers(users); }
-    saveSession(curUser.id);
     closeProfileEdit(); renderProfile();
     showToast('Contraseña cambiada ✓');
     return;
@@ -649,7 +678,6 @@ function saveProfileEdit() {
     const idx = users.findIndex(u => u.id === curUser.id);
     if (idx >= 0) { users[idx].name = val; saveUsers(users); }
   }
-  saveSession(curUser.id);
   closeProfileEdit(); renderProfile();
   showToast('Perfil actualizado ✓');
 }
