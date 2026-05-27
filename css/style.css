@@ -477,3 +477,18 @@
   .pe-save { flex:1; background:var(--espresso); color:var(--foam); border:none; padding:12px; border-radius:10px; font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .pe-save:hover { background:var(--mocha); }
   .pe-cancel { flex:1; background:var(--cream); color:var(--mocha); border:1px solid rgba(107,63,31,.1); padding:12px; border-radius:10px; font-size:13px; font-family:'DM Sans',sans-serif; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background:#fff; padding:0; }
+    #app { width:100%; min-height:auto; border-radius:0; box-shadow:none; overflow:visible; }
+    .screen:not(#s-confirm) { display:none !important; }
+    #s-confirm { display:block !important; min-height:auto; padding:20px; }
+    .conf-circle, #conf-sub, .loy-box, .btn-main, #s-confirm button { display:none !important; }
+    .conf-title { font-size:20px; margin-bottom:4px; }
+    .conf-code-box { border:none; padding:0; margin:0; }
+    .conf-code-lbl { font-size:10px; }
+    .conf-code-num { font-size:28px; }
+    .conf-pay-badge { border:1px solid #ddd; }
+    .nav, #toast, #pay-processing { display:none !important; }
+  }

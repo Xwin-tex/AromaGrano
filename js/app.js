@@ -123,7 +123,7 @@ async function loadDB() {
 //  ESTADO EN MEMORIA
 // ══════════════════════════════════════════════
 let curUser = null, cart = [], curItem = null, curQty = 1, upsellOn = false, editId = null, oFiltCur = 'all';
-let selPayMethod = 'card', ptsEditUserId = null, trackInterval = null;
+let selPayMethod = 'card', ptsEditUserId = null, trackInterval = null, _prevStatus = {};
 let usePoints = false, peField = null;
 const GOAL = 400;
 const CODES = ['A-47','B-12','C-38','A-91','D-22','E-09','F-31','G-18'];
@@ -150,7 +150,20 @@ async function init() {
   if (btnEl)  btnEl.style.display  = 'block';
 
   // ── Suscripciones en tiempo real ──
+  const _statusLabels = { pending:'⏳ Pendiente', preparing:'👨‍🍳 En preparación', ready:'✅ Listo para recoger', done:'📦 Entregado', cancelled:'❌ Cancelado' };
   DB.subscribe('orders', () => {
+    const orders = getOrders();
+    orders.forEach(o => {
+      const prev = _prevStatus[o.id];
+      if (prev && prev !== o.status) {
+        const isMine = curUser && (curUser.id === o.userId || curUser.role === 'admin');
+        if (isMine) {
+          showToast(`Pedido ${o.code}: ${_statusLabels[o.status] || o.status}`, false, 5000);
+          playNotificationSound();
+        }
+      }
+      _prevStatus[o.id] = o.status;
+    });
     updateTrackBadges();
     const s = document.querySelector('.screen.active');
     if (!s) return;
@@ -399,15 +412,6 @@ function goToPayment() {
   go('payment');
 }
 
-function renderPaymentScreen() {
-  const sub = cartTotal();
-  document.getElementById('pay-total-amt').textContent = '$' + sub.toLocaleString('es-CO');
-  document.getElementById('pay-items-list').innerHTML = cart.map(p =>
-    `<div class="pay-sum-item"><span>${p.name}${p.size ? ' · ' + p.size : ''} ×${p.qty}</span><span>$${(p.unitPrice*p.qty).toLocaleString('es-CO')}</span></div>`
-  ).join('');
-  selMethod('card', document.querySelector('.pay-method'));
-}
-
 function selMethod(method, el) {
   selPayMethod = method;
   document.querySelectorAll('.pay-method').forEach(m => m.classList.remove('sel'));
@@ -552,6 +556,58 @@ function finishOrder() {
 
 function resetApp() {
   cart = []; usePoints = false; saveCart(); updateBadges(); go('home');
+}
+
+function printReceipt() {
+  const code = document.getElementById('conf-code').textContent;
+  const items = getOrders().find(o => o.code === code);
+  if (!items) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo #${code}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;padding:24px;color:#1a1a1a;max-width:320px;margin:auto}
+h1{font-size:20px;text-align:center;margin-bottom:4px}
+.shop{text-align:center;font-size:11px;color:#666;margin-bottom:16px}
+.divider{border-top:1px dashed #999;margin:12px 0}
+.row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.row.items{margin-bottom:2px}
+.total{font-weight:600;font-size:15px;border-top:2px solid #1a1a1a;padding-top:8px;margin-top:8px}
+.code{text-align:center;font-size:18px;font-weight:600;margin:12px 0}
+.pay{text-align:center;font-size:12px;color:#666;margin-top:8px}
+.footer{text-align:center;font-size:10px;color:#999;margin-top:16px}
+@media print{body{print-color-adjust:exact}}
+</style></head><body>
+<h1>Aroma &amp; Grano</h1>
+<div class="shop">Café de Especialidad · Sucursal Centro</div>
+<div class="divider"></div>
+<div class="code">#${items.code}</div>
+<div class="row"><span>${fmtDate(items.created_at)}</span><span>${items.pay_icon || ''} ${items.pay_method_label || ''}</span></div>
+<div class="divider"></div>
+${items.items.map(i => `<div class="row items"><span>${i.qty}x ${i.name}${i.size ? ' · '+i.size : ''}</span><span>$${(i.unitPrice*i.qty).toLocaleString('es-CO')}</span></div>`).join('')}
+${items.discount > 0 ? `<div class="row" style="color:#4A7C59"><span>Descuento pts</span><span>-$${items.discount.toLocaleString('es-CO')}</span></div>` : ''}
+<div class="row total"><span>TOTAL</span><span>$${items.total.toLocaleString('es-CO')}</span></div>
+${items.points_used > 0 ? `<div class="row" style="font-size:11px;color:#666"><span>Puntos usados</span><span>-${items.points_used}</span></div>` : ''}
+<div class="pay">${items.pay_status === 'approved' ? '✅ Pago aprobado' : '💵 Pago en caja'}</div>
+<div class="divider"></div>
+<div class="footer">¡Gracias por tu compra! 🫘☕<br>Recoge tu pedido con el código #${items.code}</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 300);
+}
+
+function shareReceipt() {
+  const code = document.getElementById('conf-code').textContent;
+  const items = getOrders().find(o => o.code === code);
+  if (!items) return;
+  const txt = `🫘 Aroma & Grano · Recibo #${items.code}
+${fmtDate(items.created_at)} · ${items.pay_icon || ''} ${items.pay_method_label || ''}
+${items.items.map(i => `${i.qty}x ${i.name}${i.size ? ' · '+i.size : ''}  $${(i.unitPrice*i.qty).toLocaleString('es-CO')}`).join('\n')}
+${items.discount > 0 ? `Descuento pts: -$${items.discount.toLocaleString('es-CO')}\n` : ''}
+TOTAL: $${items.total.toLocaleString('es-CO')}
+Código de retiro: ${items.code}`;
+  if (navigator.share) navigator.share({ title: `Recibo #${items.code}`, text: txt });
+  else { navigator.clipboard.writeText(txt); showToast('Recibo copiado al portapapeles 📋'); }
 }
 
 // ══════════════════════════════════════════════
@@ -1317,11 +1373,24 @@ function stCls(s) { return s==='ready'||s==='delivered'?'st-ok':s==='preparing'?
 function stLbl(s) { return s==='delivered'?'Entregado':s==='ready'?'Listo':s==='preparing'?'Preparando':'Pendiente'; }
 function fmtDate(iso) { return new Date(iso).toLocaleDateString('es-CO', { weekday:'short', day:'numeric', month:'short' }); }
 
-function showToast(msg, err = false) {
+function showToast(msg, err = false, duration = 2800) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = err ? 'err' : '';
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2800);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', duration);
+}
+
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 660; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
 }
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
