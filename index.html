@@ -458,12 +458,18 @@
       <button class="at" onclick="aTab('reports',this)">Reportes</button>
       <button class="at" onclick="aTab('config',this)">Config.</button>
     </div>
+    <div class="a-filter">
+      <button class="af-btn on" onclick="setDateRange('today',this)">Hoy</button>
+      <button class="af-btn" onclick="setDateRange('7d',this)">7 días</button>
+      <button class="af-btn" onclick="setDateRange('30d',this)">30 días</button>
+      <button class="af-btn" onclick="setDateRange('all',this)">Todo</button>
+    </div>
     <div class="a-body">
       <!-- RESUMEN -->
       <div class="tp on" id="tp-overview">
         <div class="stats-grid">
-          <div class="stat"><div class="stat-lbl">Pedidos hoy</div><div class="stat-val" id="st-orders">0</div><div class="stat-trend trend-up" id="st-orders-trend"></div></div>
-          <div class="stat"><div class="stat-lbl">Ventas hoy</div><div class="stat-val" id="st-sales">$0</div><div class="stat-trend" id="st-sales-trend"></div></div>
+          <div class="stat"><div class="stat-lbl" id="st-orders-lbl">Pedidos</div><div class="stat-val" id="st-orders">0</div><div class="stat-trend trend-up" id="st-orders-trend"></div></div>
+          <div class="stat"><div class="stat-lbl" id="st-sales-lbl">Ventas</div><div class="stat-val" id="st-sales">$0</div><div class="stat-trend" id="st-sales-trend"></div></div>
           <div class="stat"><div class="stat-lbl">Clientes</div><div class="stat-val" id="st-users">0</div></div>
           <div class="stat"><div class="stat-lbl">Productos</div><div class="stat-val" id="st-prods">0</div></div>
         </div>
@@ -513,7 +519,7 @@
       <!-- REPORTES -->
       <div class="tp" id="tp-reports">
         <div class="rep-chart-wrap">
-          <div class="rep-chart-title">Ventas últimos 7 días (COP)</div>
+          <div class="rep-chart-title" id="rep-chart-title">Ventas</div>
           <div class="rep-bars" id="rep-bars"></div>
         </div>
         <div class="rep-top">

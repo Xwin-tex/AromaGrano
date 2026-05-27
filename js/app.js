@@ -123,7 +123,7 @@ async function loadDB() {
 //  ESTADO EN MEMORIA
 // ══════════════════════════════════════════════
 let curUser = null, cart = [], curItem = null, curQty = 1, upsellOn = false, editId = null, oFiltCur = 'all';
-let selPayMethod = 'card', ptsEditUserId = null, trackInterval = null, _prevStatus = {};
+let selPayMethod = 'card', ptsEditUserId = null, trackInterval = null, _prevStatus = {}, _dateRange = 'today';
 let usePoints = false, peField = null;
 const GOAL = 400;
 const CODES = ['A-47','B-12','C-38','A-91','D-22','E-09','F-31','G-18'];
@@ -988,6 +988,27 @@ function stopTracking() {
   if (trackInterval) { clearInterval(trackInterval); trackInterval = null; }
 }
 
+// ── Helper filtro por días ──
+function getFilteredOrders() {
+  const orders = getOrders();
+  if (_dateRange === 'all') return orders;
+  const now = new Date();
+  let start;
+  if (_dateRange === 'today') { start = new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
+  else if (_dateRange === '7d') { start = new Date(now); start.setDate(start.getDate() - 6); start = new Date(start.getFullYear(), start.getMonth(), start.getDate()); }
+  else if (_dateRange === '30d') { start = new Date(now); start.setDate(start.getDate() - 29); start = new Date(start.getFullYear(), start.getMonth(), start.getDate()); }
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return orders.filter(o => { const d = new Date(o.created_at); return d >= start && d <= end; });
+}
+
+function setDateRange(range, btn) {
+  _dateRange = range;
+  document.querySelectorAll('.af-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const s = document.querySelector('.screen.active');
+  if (s && s.id === 's-admin') { renderOverview(); renderPaymentsTab(); renderReports(); }
+}
+
 // ══════════════════════════════════════════════
 //  ADMIN
 // ══════════════════════════════════════════════
@@ -997,26 +1018,29 @@ function renderAdmin() {
 }
 
 function renderOverview() {
-  const today   = new Date().toDateString();
-  const orders  = getOrders();
-  const todayO  = orders.filter(o => new Date(o.created_at).toDateString() === today);
+  const orders  = getFilteredOrders();
   const clients = getUsers().filter(u => u.role === 'client');
-  document.getElementById('st-orders').textContent = todayO.length;
-  document.getElementById('st-sales').textContent  = '$' + (todayO.reduce((s,o) => s+o.total, 0)/1000).toFixed(0) + 'k';
+  const rangeLabels = { today:'Hoy', '7d':'7 días', '30d':'30 días', all:'Todo' };
+  const lbl = document.getElementById('st-orders-lbl');
+  if (lbl) lbl.textContent = `Pedidos (${rangeLabels[_dateRange] || _dateRange})`;
+  const lbl2 = document.getElementById('st-sales-lbl');
+  if (lbl2) lbl2.textContent = `Ventas (${rangeLabels[_dateRange] || _dateRange})`;
+  document.getElementById('st-orders').textContent = orders.length;
+  document.getElementById('st-sales').textContent  = '$' + (orders.reduce((s,o) => s+o.total, 0)/1000).toFixed(0) + 'k';
   document.getElementById('st-users').textContent  = clients.length;
   document.getElementById('st-prods').textContent  = getMenu().length;
 
-  // Actividad de pagos de hoy
+  // Actividad de pagos del período
   const payEl = document.getElementById('a-pay-today');
-  if (todayO.length) {
+  if (orders.length) {
     const methodCounts = {};
-    todayO.forEach(o => { methodCounts[o.pay_method_label || 'Sin método'] = (methodCounts[o.pay_method_label || 'Sin método'] || 0) + 1; });
+    orders.forEach(o => { methodCounts[o.pay_method_label || 'Sin método'] = (methodCounts[o.pay_method_label || 'Sin método'] || 0) + 1; });
     payEl.innerHTML = Object.entries(methodCounts).map(([m, c]) => `
       <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(200,135,74,.1);border:1px solid rgba(200,135,74,.2);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--latte);margin:0 5px 5px 0">
         ${c} pedido${c>1?'s':''} · ${m}
       </span>`).join('');
   } else {
-    payEl.innerHTML = '<div style="font-size:12px;color:rgba(212,160,106,.4)">Sin pedidos hoy aún.</div>';
+    payEl.innerHTML = '<div style="font-size:12px;color:rgba(212,160,106,.4)">Sin pedidos en este período.</div>';
   }
 
   document.getElementById('a-recent').innerHTML = orders.slice(0, 4).map(o => orderRow(o, false)).join('')
@@ -1120,7 +1144,7 @@ function applyPts() {
 //  TAB PAGOS
 // ══════════════════════════════════════════════
 function renderPaymentsTab() {
-  const orders = getOrders().filter(o => o.pay_method);
+  const orders = getFilteredOrders().filter(o => o.pay_method);
   const total = orders.reduce((s,o) => s + o.total, 0);
   const avg = orders.length ? Math.round(total / orders.length) : 0;
   document.getElementById('ps-total').textContent = '$' + (total/1000).toFixed(0) + 'k';
@@ -1178,8 +1202,11 @@ function renderPaymentsTab() {
 //  TAB REPORTES
 // ══════════════════════════════════════════════
 function renderReports() {
-  const orders = getOrders();
-  // Ventas últimos 7 días
+  const orders = getFilteredOrders();
+  const rangeLabels = { today:'Hoy', '7d':'Últimos 7 días', '30d':'Últimos 30 días', all:'Todo el historial' };
+  const chartTitle = document.getElementById('rep-chart-title');
+  if (chartTitle) chartTitle.textContent = `Ventas (${rangeLabels[_dateRange] || _dateRange}) — $${orders.reduce((s,o) => s+o.total, 0).toLocaleString('es-CO')}`;
+  // Ventas por día (últimos 7 días dentro del rango)
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
