@@ -6,22 +6,28 @@ SPA para una cafetería de especialidad con pedidos en tiempo real, panel de adm
 
 - **Frontend:** HTML + CSS + JS vanilla
 - **Backend:** Firebase (Firestore + Auth)
-- **Hosting:** Compatible con Netlify, Vercel, GitHub Pages
+- **Hosting:** Vercel
 
-## Requisitos
+## Live demo
 
-1. Una cuenta de Firebase (plan Spark gratis)
-2. Un proyecto en [Firebase Console](https://console.firebase.google.com)
+[https://aroma-grano.vercel.app](https://aroma-grano.vercel.app)
 
-## Configuración inicial
+## Configuración local
 
-### 1. Crear proyecto Firebase
+### 1. Clonar el repo
+
+```bash
+git clone <repo-url>
+cd aroma-grano
+```
+
+### 2. Crear proyecto Firebase
 
 1. Ve a [Firebase Console](https://console.firebase.google.com) y crea un proyecto
 2. Activa **Authentication** → Sign-in method → **Correo/contraseña**
-3. Activa **Firestore Database** → modo prueba (o configura reglas más adelante)
+3. Activa **Firestore Database** → modo prueba
 
-### 2. Configurar credenciales
+### 3. Configurar credenciales
 
 En la consola de Firebase: Configuración del proyecto → Tus apps → Web → **Config** (NO npm)
 
@@ -38,7 +44,7 @@ const firebaseConfig = {
 };
 ```
 
-### 3. Reglas de seguridad Firestore (desarrollo)
+### 4. Reglas de seguridad Firestore (desarrollo)
 
 ```
 rules_version = '2';
@@ -53,9 +59,9 @@ service cloud.firestore {
 
 > ⚠️ Cambiar a reglas restrictivas antes de producción.
 
-## Uso
+### 5. Probar localmente
 
-Abre `index.html` en un servidor local o súbelo a un hosting estático.
+Abre `index.html` con un servidor local (Live Server, `npx serve .`, etc.).
 
 Al primer inicio, la app crea automáticamente:
 
