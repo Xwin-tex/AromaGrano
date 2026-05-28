@@ -353,7 +353,12 @@ function clearCart() {
 function cartTotal() { return cart.reduce((s, i) => s + i.unitPrice * i.qty, 0); }
 function updateBadges() {
   const t = cart.reduce((s, i) => s + i.qty, 0);
-  ['cb1','cb2','cb3','cb4','cb5'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = t; });
+  ['cb1','cb2','cb3','cb4','cb5'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    const changed = el.textContent !== String(t);
+    el.textContent = t;
+    if (changed) { el.classList.remove('bounce'); void el.offsetWidth; el.classList.add('bounce'); }
+  });
   updateTrackBadges();
 }
 
@@ -552,6 +557,22 @@ function finishOrder() {
   }
   
   go('confirm');
+  setTimeout(showConfetti, 350);
+}
+
+function showConfetti() {
+  const container = document.getElementById('s-confirm');
+  if (!container) return;
+  const colors = ['#C8874A','#D4A06A','#4A7C59','#58A6FF','#9933FF','#F85149','#D29922','#fff'];
+  for (let i = 0; i < 50; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animation = `confettiFall ${1.5 + Math.random()}s ease ${Math.random() * 0.8}s forwards`;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }
 }
 
 function resetApp() {
@@ -1362,8 +1383,18 @@ function delProd(id) {
 //  NAVEGACIÓN
 // ══════════════════════════════════════════════
 function go(screen) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('s-' + screen).classList.add('active');
+  const cur = document.querySelector('.screen.active');
+  const nxt = document.getElementById('s-' + screen);
+  if (!nxt || cur === nxt) return;
+  if (cur) {
+    cur.style.animation = 'fadeOut .2s ease forwards';
+    setTimeout(() => {
+      cur.classList.remove('active'); cur.style.animation = '';
+      nxt.classList.add('active');
+      nxt.style.animation = 'fadeIn .25s ease';
+      setTimeout(() => nxt.style.animation = '', 300);
+    }, 200);
+  } else { nxt.classList.add('active'); nxt.style.animation = 'fadeIn .25s ease'; setTimeout(() => nxt.style.animation = '', 300); }
   if (screen === 'cart')      renderCart();
   if (screen === 'loyalty')   renderLoyalty();
   if (screen === 'home')      renderMenu();
